@@ -94,7 +94,7 @@ int initialise(const char* paramfile, const char* obstaclefile,
 */
 int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 int write_values(const t_param params, t_speed* cells, int* obstacles, float* av_vels);
-float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
+float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, float w11, float w22, float c_sq, float w0, float w1, float w2, float divideVal, float divideVal2);
 
 /* finalise, including freeing up allocated memory */
 int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
@@ -151,6 +151,17 @@ int main(int argc, char* argv[])
     // 这里初始化了参数！
     initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
 
+
+    float w11 = params.density * params.accel / 9.f;
+    float w22 = params.density * params.accel / 36.f;
+    const float c_sq = 1.f / 3.f; /* square of speed of sound */
+    const float w0 = 4.f / 9.f;  /* weighting factor */
+    float w1 = 1.f / 9.f;  /* weighting factor */
+    float w2 = 1.f / 36.f; /* weighting factor */
+
+    float divideVal = 2.f * c_sq * c_sq;
+    float divideVal2 = 2.f * c_sq;
+
     /* Init time stops here, compute time starts*/
     gettimeofday(&timstr, NULL);
     init_toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
@@ -160,7 +171,7 @@ int main(int argc, char* argv[])
 
     for(int tt = 0; tt < params.maxIters; tt++)
     {
-        av_vels[tt] = fusion_more(params, cells, tmp_cells, obstacles);
+        av_vels[tt] = fusion_more(params, cells, tmp_cells, obstacles, w11, w22, c_sq, w0, w1, w2,divideVal,divideVal2);
 
         t_speed* temp; // 定义一个临时指针用于交换
         temp = cells;  // 将cells的地址存储到temp中
@@ -199,18 +210,15 @@ int main(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 
-float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles){
+float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, float w11, float w22,
+                  float c_sq, float w0, float w1, float w2, float divideVal, float divideVal2){
     int    tot_cells = 0;  /* no. of cells used in calculation */
     float tot_u;          /* accumulated magnitudes of velocity for each cell */
-
     /* initialise */
     tot_u = 0.f;
 
-    float w1 = params.density * params.accel / 9.f;
-    float w2 = params.density * params.accel / 36.f;
-
     /* modify the 2nd row of the grid */
-    // 只动倒数第二行
+    // accelerate flow!!!!!
     int jj = params.ny - 2;
 
     for (int ii = 0; ii < params.nx; ii++)
@@ -220,34 +228,28 @@ float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int*
 
         //这个ii + jj*params.nx是一个一维数组的索引，很好理解，jj是多少行，params.nx是一行有多少个元素
         if (!obstacles[ii + jj*params.nx]
-            && (cells[ii + jj*params.nx].speeds[3] - w1) > 0.f
-            && (cells[ii + jj*params.nx].speeds[6] - w2) > 0.f
-            && (cells[ii + jj*params.nx].speeds[7] - w2) > 0.f)
+            && (cells[ii + jj*params.nx].speeds[3] - w11) > 0.f
+            && (cells[ii + jj*params.nx].speeds[6] - w22) > 0.f
+            && (cells[ii + jj*params.nx].speeds[7] - w22) > 0.f)
         {
             /* increase 'east-side' densities */
-            // 可以看一下下面传播的函数中每个speed代表的哪个方向
-            cells[ii + jj*params.nx].speeds[1] += w1;
-            cells[ii + jj*params.nx].speeds[5] += w2;
-            cells[ii + jj*params.nx].speeds[8] += w2;
+            cells[ii + jj*params.nx].speeds[1] += w11;
+            cells[ii + jj*params.nx].speeds[5] += w22;
+            cells[ii + jj*params.nx].speeds[8] += w22;
             /* decrease 'west-side' densities */
-            cells[ii + jj*params.nx].speeds[3] -= w1;
-            cells[ii + jj*params.nx].speeds[6] -= w2;
-            cells[ii + jj*params.nx].speeds[7] -= w2;
+            cells[ii + jj*params.nx].speeds[3] -= w11;
+            cells[ii + jj*params.nx].speeds[6] -= w22;
+            cells[ii + jj*params.nx].speeds[7] -= w22;
         }
     }
-
-    const float c_sq = 1.f / 3.f; /* square of speed of sound */
-    const float w0 = 4.f / 9.f;  /* weighting factor */
-    // 这里注意，因为我们后面用不到上面的w1和w2了，所以这里直接覆盖之前的值
-    w1 = 1.f / 9.f;  /* weighting factor */
-    w2 = 1.f / 36.f; /* weighting factor */
-
+    //all above is accelerate_flow()!!!!!
 
     /* loop over _all_ cells */
     for (int jj = 0; jj < params.ny; jj++)
     {
         for (int ii = 0; ii < params.nx; ii++)
         {
+            // propagate()!!!!
             /* determine indices of axis-direction neighbours
             ** respecting periodic boundary conditions (wrap around) */
             int y_n = (jj + 1) % params.ny;
@@ -273,6 +275,7 @@ float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int*
             /* if the cell contains an obstacle */
             if (obstacles[jj*params.nx + ii])
             {
+                //rebound()!!!!!!!!!!!
                 /* called after propagate, so taking values from scratch space
                 ** mirroring, and writing into main grid */
                 tmp_cells[ii + jj*params.nx].speeds[1] = keep[3];
@@ -284,6 +287,7 @@ float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int*
                 tmp_cells[ii + jj*params.nx].speeds[7] = keep[5];
                 tmp_cells[ii + jj*params.nx].speeds[8] = keep[6];
             }else{
+                //collision()!!!!!!!!!!!!
                 /* compute local density total */
                 float local_density = 0.f;
 
@@ -315,9 +319,9 @@ float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int*
                 /* directional velocity components */
                 float u[NSPEEDS];
                 u[1] =   u_x;        /* east */
-                u[2] =         u_y;  /* north */
+                u[2] =   u_y;  /* north */
                 u[3] = - u_x;        /* west */
-                u[4] =       - u_y;  /* south */
+                u[4] = - u_y;  /* south */
                 u[5] =   u_x + u_y;  /* north-east */
                 u[6] = - u_x + u_y;  /* north-west */
                 u[7] = - u_x - u_y;  /* south-west */
@@ -328,32 +332,36 @@ float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int*
                 /* zero velocity density: weight w0 */
                 d_equ[0] = w0 * local_density
                            * (1.f - u_sq / (2.f * c_sq));
+
+                float w1Local = w1 * local_density;
+                float w2Local = w2 * local_density;
+                float val = u_sq / divideVal2;
                 /* axis speeds: weight w1 */
-                d_equ[1] = w1 * local_density * (1.f + u[1] / c_sq
-                                                 + (u[1] * u[1]) / (2.f * c_sq * c_sq)
-                                                 - u_sq / (2.f * c_sq));
-                d_equ[2] = w1 * local_density * (1.f + u[2] / c_sq
-                                                 + (u[2] * u[2]) / (2.f * c_sq * c_sq)
-                                                 - u_sq / (2.f * c_sq));
-                d_equ[3] = w1 * local_density * (1.f + u[3] / c_sq
-                                                 + (u[3] * u[3]) / (2.f * c_sq * c_sq)
-                                                 - u_sq / (2.f * c_sq));
-                d_equ[4] = w1 * local_density * (1.f + u[4] / c_sq
-                                                 + (u[4] * u[4]) / (2.f * c_sq * c_sq)
-                                                 - u_sq / (2.f * c_sq));
+                d_equ[1] = w1Local * (1.f + u[1] / c_sq
+                                      + (u[1] * u[1]) / divideVal
+                                      - val );
+                d_equ[2] = w1Local * (1.f + u[2] / c_sq
+                                      + (u[2] * u[2]) / divideVal
+                                      - val);
+                d_equ[3] = w1Local * (1.f + u[3] / c_sq
+                                      + (u[3] * u[3]) / divideVal
+                                      - val);
+                d_equ[4] = w1Local * (1.f + u[4] / c_sq
+                                      + (u[4] * u[4]) / divideVal
+                                      - val);
                 /* diagonal speeds: weight w2 */
-                d_equ[5] = w2 * local_density * (1.f + u[5] / c_sq
-                                                 + (u[5] * u[5]) / (2.f * c_sq * c_sq)
-                                                 - u_sq / (2.f * c_sq));
-                d_equ[6] = w2 * local_density * (1.f + u[6] / c_sq
-                                                 + (u[6] * u[6]) / (2.f * c_sq * c_sq)
-                                                 - u_sq / (2.f * c_sq));
-                d_equ[7] = w2 * local_density * (1.f + u[7] / c_sq
-                                                 + (u[7] * u[7]) / (2.f * c_sq * c_sq)
-                                                 - u_sq / (2.f * c_sq));
-                d_equ[8] = w2 * local_density * (1.f + u[8] / c_sq
-                                                 + (u[8] * u[8]) / (2.f * c_sq * c_sq)
-                                                 - u_sq / (2.f * c_sq));
+                d_equ[5] = w2Local * (1.f + u[5] / c_sq
+                                      + (u[5] * u[5]) / divideVal
+                                      - val);
+                d_equ[6] = w2Local * (1.f + u[6] / c_sq
+                                      + (u[6] * u[6]) / divideVal
+                                      - val);
+                d_equ[7] = w2Local * (1.f + u[7] / c_sq
+                                      + (u[7] * u[7]) / divideVal
+                                      - val);
+                d_equ[8] = w2Local * (1.f + u[8] / c_sq
+                                      + (u[8] * u[8]) / divideVal
+                                      - val);
 
                 /* relaxation step */
                 for (int kk = 0; kk < NSPEEDS; kk++)
@@ -364,6 +372,7 @@ float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int*
                 }
 
                 //下面是计算流场的平均速度。
+                // av_velocity()!!!
                 /* local density total */
                 local_density = 0.f;
 
