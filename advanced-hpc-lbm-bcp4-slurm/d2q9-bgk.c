@@ -98,7 +98,7 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 int write_values(const t_param params, t_speed* cells, int* obstacles, float* av_vels);
-int fusion_func(const t_param params, t_speed* cells, int* obstacles);
+int fusion_func(const t_param params, t_speed* cells,t_speed* tmp_cells, int* obstacles);
 
 /* finalise, including freeing up allocated memory */
 int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
@@ -215,14 +215,14 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
     //加速流体，模拟流体受力加速。
     accelerate_flow(params, cells, obstacles);
 
-    fusion_func(params, cells, obstacles);
+    fusion_func(params, cells,tmp_cells, obstacles);
 
     return EXIT_SUCCESS;
 }
 
-int fusion_func(const t_param params, t_speed* cells, int* obstacles){
+int fusion_func(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles){
     //初始化new cells
-    t_speed* new_cells = (t_speed*)malloc(sizeof(t_speed) * params.nx * params.ny);
+//    t_speed* new_cells = (t_speed*)malloc(sizeof(t_speed) * params.nx * params.ny);
 
     const float c_sq = 1.f / 3.f; /* square of speed of sound */
     const float w0 = 4.f / 9.f;  /* weighting factor */
@@ -262,14 +262,14 @@ int fusion_func(const t_param params, t_speed* cells, int* obstacles){
             {
                 /* called after propagate, so taking values from scratch space
                 ** mirroring, and writing into main grid */
-                new_cells[ii + jj*params.nx].speeds[1] = keep[3];
-                new_cells[ii + jj*params.nx].speeds[2] = keep[4];
-                new_cells[ii + jj*params.nx].speeds[3] = keep[1];
-                new_cells[ii + jj*params.nx].speeds[4] = keep[2];
-                new_cells[ii + jj*params.nx].speeds[5] = keep[7];
-                new_cells[ii + jj*params.nx].speeds[6] = keep[8];
-                new_cells[ii + jj*params.nx].speeds[7] = keep[5];
-                new_cells[ii + jj*params.nx].speeds[8] = keep[6];
+                tmp_cells[ii + jj*params.nx].speeds[1] = keep[3];
+                tmp_cells[ii + jj*params.nx].speeds[2] = keep[4];
+                tmp_cells[ii + jj*params.nx].speeds[3] = keep[1];
+                tmp_cells[ii + jj*params.nx].speeds[4] = keep[2];
+                tmp_cells[ii + jj*params.nx].speeds[5] = keep[7];
+                tmp_cells[ii + jj*params.nx].speeds[6] = keep[8];
+                tmp_cells[ii + jj*params.nx].speeds[7] = keep[5];
+                tmp_cells[ii + jj*params.nx].speeds[8] = keep[6];
             }else{
                 /* compute local density total */
                 float local_density = 0.f;
@@ -345,7 +345,7 @@ int fusion_func(const t_param params, t_speed* cells, int* obstacles){
                 /* relaxation step */
                 for (int kk = 0; kk < NSPEEDS; kk++)
                 {
-                    new_cells[ii + jj*params.nx].speeds[kk] = keep[kk]
+                    tmp_cells[ii + jj*params.nx].speeds[kk] = keep[kk]
                                                               + params.omega
                                                                 * (d_equ[kk] - keep[kk]);
                 }
@@ -359,7 +359,7 @@ int fusion_func(const t_param params, t_speed* cells, int* obstacles){
         {
             for (int kk = 0; kk < NSPEEDS; kk++)
             {
-                cells[ii + jj*params.nx].speeds[kk] = new_cells[ii + jj*params.nx].speeds[kk];
+                cells[ii + jj*params.nx].speeds[kk] = tmp_cells[ii + jj*params.nx].speeds[kk];
             }
         }
     }
