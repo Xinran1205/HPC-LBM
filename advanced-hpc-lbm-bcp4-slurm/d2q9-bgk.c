@@ -94,9 +94,6 @@ int initialise(const char* paramfile, const char* obstaclefile,
 */
 int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 int accelerate_flow(const t_param params, t_speed* cells, int* obstacles);
-int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells);
-int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
-int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 int write_values(const t_param params, t_speed* cells, int* obstacles, float* av_vels);
 int fusion_func(const t_param params, t_speed* cells,t_speed* tmp_cells, int* obstacles);
 
@@ -167,6 +164,12 @@ int main(int argc, char* argv[])
         // 这个函数做了 accelerate_flow, propagate, rebound, collision 四个步骤
         //Applying appropriate loop fusion (you should only need to iterate over the whole grid once per timestep)
         timestep(params, cells, tmp_cells, obstacles);
+
+        t_speed* temp; // 定义一个临时指针用于交换
+        temp = cells;  // 将cells的地址存储到temp中
+        cells = tmp_cells; // 将tmp_cells的地址赋值给cells
+        tmp_cells = temp; // 将temp（原来cells的地址）赋值给tmp_cells
+
         // 计算流场的平均速度
         av_vels[tt] = av_velocity(params, cells, obstacles);
 #ifdef DEBUG
@@ -215,14 +218,12 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
     //加速流体，模拟流体受力加速。
     accelerate_flow(params, cells, obstacles);
 
-    fusion_func(params, cells,tmp_cells, obstacles);
+    fusion_func(params, cells, tmp_cells, obstacles);
 
     return EXIT_SUCCESS;
 }
 
 int fusion_func(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles){
-    //初始化new cells
-//    t_speed* new_cells = (t_speed*)malloc(sizeof(t_speed) * params.nx * params.ny);
 
     const float c_sq = 1.f / 3.f; /* square of speed of sound */
     const float w0 = 4.f / 9.f;  /* weighting factor */
@@ -349,17 +350,6 @@ int fusion_func(const t_param params, t_speed* cells, t_speed* tmp_cells, int* o
                                                               + params.omega
                                                                 * (d_equ[kk] - keep[kk]);
                 }
-            }
-        }
-    }
-    // 双重for循环把new_cells的值赋给cells
-    for (int jj = 0; jj < params.ny; jj++)
-    {
-        for (int ii = 0; ii < params.nx; ii++)
-        {
-            for (int kk = 0; kk < NSPEEDS; kk++)
-            {
-                cells[ii + jj*params.nx].speeds[kk] = tmp_cells[ii + jj*params.nx].speeds[kk];
             }
         }
     }
