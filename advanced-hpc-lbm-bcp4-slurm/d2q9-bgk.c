@@ -93,9 +93,8 @@ int initialise(const char* paramfile, const char* obstaclefile,
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
 int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
-int accelerate_flow(const t_param params, t_speed* cells, int* obstacles);
 int write_values(const t_param params, t_speed* cells, int* obstacles, float* av_vels);
-int fusion_func(const t_param params, t_speed* cells,t_speed* tmp_cells, int* obstacles);
+float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 
 /* finalise, including freeing up allocated memory */
 int finalise(const t_param* params, t_speed** cells_ptr, t_speed** tmp_cells_ptr,
@@ -161,17 +160,13 @@ int main(int argc, char* argv[])
 
     for(int tt = 0; tt < params.maxIters; tt++)
     {
-        // 这个函数做了 accelerate_flow, propagate, rebound, collision 四个步骤
-        //Applying appropriate loop fusion (you should only need to iterate over the whole grid once per timestep)
-        timestep(params, cells, tmp_cells, obstacles);
+        av_vels[tt] = fusion_more(params, cells, tmp_cells, obstacles);
 
         t_speed* temp; // 定义一个临时指针用于交换
         temp = cells;  // 将cells的地址存储到temp中
         cells = tmp_cells; // 将tmp_cells的地址赋值给cells
         tmp_cells = temp; // 将temp（原来cells的地址）赋值给tmp_cells
 
-        // 计算流场的平均速度
-        av_vels[tt] = av_velocity(params, cells, obstacles);
 #ifdef DEBUG
         printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
@@ -204,33 +199,50 @@ int main(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 
+float fusion_more(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles){
+    int    tot_cells = 0;  /* no. of cells used in calculation */
+    float tot_u;          /* accumulated magnitudes of velocity for each cell */
 
-//执行一个时间步的模拟，包括加速流体、传播、反弹和碰撞处理。
+    /* initialise */
+    tot_u = 0.f;
 
-//obstacle值是永远不变的！
-// accelerate_flow只对倒数第二行的流体粒子进行加速，其他行的流体粒子不受加速度的影响。并且修改了倒数第二行cells的值。
+    float w1 = params.density * params.accel / 9.f;
+    float w2 = params.density * params.accel / 36.f;
 
+    /* modify the 2nd row of the grid */
+    // 只动倒数第二行
+    int jj = params.ny - 2;
 
-// cells是一个一维数组，每个元素是一个结构体，每个结构体里面有9个float类型的speeds。
-// cells是这个板子的每个点，每个点都有9个速度
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles)
-{
-    //加速流体，模拟流体受力加速。
-    accelerate_flow(params, cells, obstacles);
+    for (int ii = 0; ii < params.nx; ii++)
+    {
+        /* if the cell is not occupied and
+        ** we don't send a negative density */
 
-    fusion_func(params, cells, tmp_cells, obstacles);
-
-    return EXIT_SUCCESS;
-}
-
-int fusion_func(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles){
+        //这个ii + jj*params.nx是一个一维数组的索引，很好理解，jj是多少行，params.nx是一行有多少个元素
+        if (!obstacles[ii + jj*params.nx]
+            && (cells[ii + jj*params.nx].speeds[3] - w1) > 0.f
+            && (cells[ii + jj*params.nx].speeds[6] - w2) > 0.f
+            && (cells[ii + jj*params.nx].speeds[7] - w2) > 0.f)
+        {
+            /* increase 'east-side' densities */
+            // 可以看一下下面传播的函数中每个speed代表的哪个方向
+            cells[ii + jj*params.nx].speeds[1] += w1;
+            cells[ii + jj*params.nx].speeds[5] += w2;
+            cells[ii + jj*params.nx].speeds[8] += w2;
+            /* decrease 'west-side' densities */
+            cells[ii + jj*params.nx].speeds[3] -= w1;
+            cells[ii + jj*params.nx].speeds[6] -= w2;
+            cells[ii + jj*params.nx].speeds[7] -= w2;
+        }
+    }
 
     const float c_sq = 1.f / 3.f; /* square of speed of sound */
     const float w0 = 4.f / 9.f;  /* weighting factor */
-    const float w1 = 1.f / 9.f;  /* weighting factor */
-    const float w2 = 1.f / 36.f; /* weighting factor */
+    // 这里注意，因为我们后面用不到上面的w1和w2了，所以这里直接覆盖之前的值
+    w1 = 1.f / 9.f;  /* weighting factor */
+    w2 = 1.f / 36.f; /* weighting factor */
 
-    // propagate
+
     /* loop over _all_ cells */
     for (int jj = 0; jj < params.ny; jj++)
     {
@@ -350,51 +362,45 @@ int fusion_func(const t_param params, t_speed* cells, t_speed* tmp_cells, int* o
                                                               + params.omega
                                                                 * (d_equ[kk] - keep[kk]);
                 }
+
+                //下面是计算流场的平均速度。
+                /* local density total */
+                local_density = 0.f;
+
+                for (int kk = 0; kk < NSPEEDS; kk++)
+                {
+                    local_density += tmp_cells[ii + jj*params.nx].speeds[kk];
+                }
+
+                /* x-component of velocity */
+                u_x = (tmp_cells[ii + jj*params.nx].speeds[1]
+                       + tmp_cells[ii + jj*params.nx].speeds[5]
+                       + tmp_cells[ii + jj*params.nx].speeds[8]
+                       - (tmp_cells[ii + jj*params.nx].speeds[3]
+                          + tmp_cells[ii + jj*params.nx].speeds[6]
+                          + tmp_cells[ii + jj*params.nx].speeds[7]))
+                      / local_density;
+                /* compute y velocity component */
+                u_y = (tmp_cells[ii + jj*params.nx].speeds[2]
+                       + tmp_cells[ii + jj*params.nx].speeds[5]
+                       + tmp_cells[ii + jj*params.nx].speeds[6]
+                       - (tmp_cells[ii + jj*params.nx].speeds[4]
+                          + tmp_cells[ii + jj*params.nx].speeds[7]
+                          + tmp_cells[ii + jj*params.nx].speeds[8]))
+                      / local_density;
+                /* accumulate the norm of x- and y- velocity components */
+                tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
+                /* increase counter of inspected cells */
+                ++tot_cells;
             }
         }
     }
 
-    return EXIT_SUCCESS;
-}
-
-int accelerate_flow(const t_param params, t_speed* cells, int* obstacles)
-{
-    /* compute weighting factors */
-    // 计算两个常数，用来更改后面的速度
-    float w1 = params.density * params.accel / 9.f;
-    float w2 = params.density * params.accel / 36.f;
-
-    /* modify the 2nd row of the grid */
-    // 只动倒数第二行
-    int jj = params.ny - 2;
-
-    for (int ii = 0; ii < params.nx; ii++)
-    {
-        /* if the cell is not occupied and
-        ** we don't send a negative density */
-
-        //这个ii + jj*params.nx是一个一维数组的索引，很好理解，jj是多少行，params.nx是一行有多少个元素
-        if (!obstacles[ii + jj*params.nx]
-            && (cells[ii + jj*params.nx].speeds[3] - w1) > 0.f
-            && (cells[ii + jj*params.nx].speeds[6] - w2) > 0.f
-            && (cells[ii + jj*params.nx].speeds[7] - w2) > 0.f)
-        {
-            /* increase 'east-side' densities */
-            // 可以看一下下面传播的函数中每个speed代表的哪个方向
-            cells[ii + jj*params.nx].speeds[1] += w1;
-            cells[ii + jj*params.nx].speeds[5] += w2;
-            cells[ii + jj*params.nx].speeds[8] += w2;
-            /* decrease 'west-side' densities */
-            cells[ii + jj*params.nx].speeds[3] -= w1;
-            cells[ii + jj*params.nx].speeds[6] -= w2;
-            cells[ii + jj*params.nx].speeds[7] -= w2;
-        }
-    }
-
-    return EXIT_SUCCESS;
+    return tot_u / (float)tot_cells;
 }
 
 //计算流场的平均速度。
+//这个函数不能删，后面也会用到
 float av_velocity(const t_param params, t_speed* cells, int* obstacles)
 {
     int    tot_cells = 0;  /* no. of cells used in calculation */
