@@ -2,8 +2,10 @@
 
 EXE=d2q9-bgk
 
-CC=gcc
-CFLAGS= -std=c99 -Wall -pg -Ofast -mtune=native
+CC=icc
+#CC=gcc
+#CFLAGS= -std=c99 -Wall -Ofast -mtune=native
+CFLAGS= -std=c99 -Wall -O3 -xHost -ipo -no-prec-div -fp-model fast=2 -mtune=native -qopt-report=5
 LIBS = -lm
 
 FINAL_STATE_FILE=./final_state.dat
