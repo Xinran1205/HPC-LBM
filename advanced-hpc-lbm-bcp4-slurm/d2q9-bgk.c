@@ -213,9 +213,13 @@ int main(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 
-float fusion_more(const t_param params, t_speeds_soa* cells_soa, t_speeds_soa* tmp_cells_soa, int* obstacles, const float w11,
+float fusion_more(const t_param params, t_speeds_soa* restrict cells_soa, t_speeds_soa* restrict tmp_cells_soa,
+                  int* restrict obstacles, const float w11,
                   const float w22, const float c_sq, const float w0, const float w1, const float w2,
                   const float divideVal, const float divideVal2){
+    __assume_aligned(cells_soa->speeds0, 32);
+    __assume_aligned(tmp_cells_soa->speeds0, 32);
+
     int    tot_cells = 0;  /* no. of cells used in calculation */
     float tot_u;          /* accumulated magnitudes of velocity for each cell */
     /* initialise */
@@ -225,6 +229,7 @@ float fusion_more(const t_param params, t_speeds_soa* cells_soa, t_speeds_soa* t
     // accelerate flow!!!!!
     int secondRow = params.ny - 2;
 
+#pragma omp simd
     for (int ii = 0; ii < params.nx; ii++)
     {
         /* if the cell is not occupied and
@@ -250,6 +255,7 @@ float fusion_more(const t_param params, t_speeds_soa* cells_soa, t_speeds_soa* t
     /* loop over _all_ cells */
     for (int jj = 0; jj < params.ny; jj++)
     {
+#pragma omp simd
         for (int ii = 0; ii < params.nx; ii++)
         {
             // propagate()!!!!
@@ -544,30 +550,51 @@ int initialise(const char* paramfile, const char* obstaclefile,
     */
 
     /* main grid */
-    cells_soa->speeds0 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    cells_soa->speeds1 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    cells_soa->speeds2 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    cells_soa->speeds3 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    cells_soa->speeds4 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    cells_soa->speeds5 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    cells_soa->speeds6 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    cells_soa->speeds7 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    cells_soa->speeds8 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    cells_soa->speeds0 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    cells_soa->speeds1 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    cells_soa->speeds2 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    cells_soa->speeds3 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    cells_soa->speeds4 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    cells_soa->speeds5 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    cells_soa->speeds6 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    cells_soa->speeds7 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    cells_soa->speeds8 = (float *) malloc(params->ny * params->nx * sizeof(float));
+
+    cells_soa->speeds0 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    cells_soa->speeds1 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    cells_soa->speeds2 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    cells_soa->speeds3 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    cells_soa->speeds4 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    cells_soa->speeds5 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    cells_soa->speeds6 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    cells_soa->speeds7 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    cells_soa->speeds8 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
 
     /* 'helper' grid, used as scratch space */
 
-    tmp_cells_soa->speeds0 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    tmp_cells_soa->speeds1 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    tmp_cells_soa->speeds2 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    tmp_cells_soa->speeds3 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    tmp_cells_soa->speeds4 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    tmp_cells_soa->speeds5 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    tmp_cells_soa->speeds6 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    tmp_cells_soa->speeds7 = (float *) malloc(params->ny * params->nx * sizeof(float));
-    tmp_cells_soa->speeds8 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    tmp_cells_soa->speeds0 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    tmp_cells_soa->speeds1 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    tmp_cells_soa->speeds2 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    tmp_cells_soa->speeds3 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    tmp_cells_soa->speeds4 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    tmp_cells_soa->speeds5 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    tmp_cells_soa->speeds6 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    tmp_cells_soa->speeds7 = (float *) malloc(params->ny * params->nx * sizeof(float));
+//    tmp_cells_soa->speeds8 = (float *) malloc(params->ny * params->nx * sizeof(float));
+
+    tmp_cells_soa->speeds0 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    tmp_cells_soa->speeds1 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    tmp_cells_soa->speeds2 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    tmp_cells_soa->speeds3 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    tmp_cells_soa->speeds4 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    tmp_cells_soa->speeds5 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    tmp_cells_soa->speeds6 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    tmp_cells_soa->speeds7 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
+    tmp_cells_soa->speeds8 = (float *) _mm_malloc(params->ny * params->nx * sizeof(float), 32);
 
     /* the map of obstacles */
-    *obstacles_ptr = malloc(sizeof(int) * (params->ny * params->nx));
+//    *obstacles_ptr = malloc(sizeof(int) * (params->ny * params->nx));
+    *obstacles_ptr = (int *) _mm_malloc(sizeof(int) * (params->ny * params->nx), 32);
 
     if (*obstacles_ptr == NULL) die("cannot allocate column memory for obstacles", __LINE__, __FILE__);
 
@@ -630,7 +657,8 @@ int initialise(const char* paramfile, const char* obstaclefile,
     ** allocate space to hold a record of the avarage velocities computed
     ** at each timestep
     */
-    *av_vels_ptr = (float *) malloc(sizeof(float) * params->maxIters);
+//    *av_vels_ptr = (float *) malloc(sizeof(float) * params->maxIters);
+    *av_vels_ptr = (float *) _mm_malloc(sizeof(float) * params->maxIters, 32);
 
     return EXIT_SUCCESS;
 
@@ -639,33 +667,57 @@ int initialise(const char* paramfile, const char* obstaclefile,
 int finalise(const t_param* params, t_speeds_soa* cells_soa, t_speeds_soa* tmp_cells_soa,
              int** obstacles_ptr, float** av_vels_ptr) {
     // 释放 cells_soa 中的每个速度数组
-    free(cells_soa->speeds0);
-    free(cells_soa->speeds1);
-    free(cells_soa->speeds2);
-    free(cells_soa->speeds3);
-    free(cells_soa->speeds4);
-    free(cells_soa->speeds5);
-    free(cells_soa->speeds6);
-    free(cells_soa->speeds7);
-    free(cells_soa->speeds8);
+//    free(cells_soa->speeds0);
+//    free(cells_soa->speeds1);
+//    free(cells_soa->speeds2);
+//    free(cells_soa->speeds3);
+//    free(cells_soa->speeds4);
+//    free(cells_soa->speeds5);
+//    free(cells_soa->speeds6);
+//    free(cells_soa->speeds7);
+//    free(cells_soa->speeds8);
+    _mm_free(cells_soa->speeds0);
+    _mm_free(cells_soa->speeds1);
+    _mm_free(cells_soa->speeds2);
+    _mm_free(cells_soa->speeds3);
+    _mm_free(cells_soa->speeds4);
+    _mm_free(cells_soa->speeds5);
+    _mm_free(cells_soa->speeds6);
+    _mm_free(cells_soa->speeds7);
+    _mm_free(cells_soa->speeds8);
 
     // 释放 tmp_cells_soa 中的每个速度数组
-    free(tmp_cells_soa->speeds0);
-    free(tmp_cells_soa->speeds1);
-    free(tmp_cells_soa->speeds2);
-    free(tmp_cells_soa->speeds3);
-    free(tmp_cells_soa->speeds4);
-    free(tmp_cells_soa->speeds5);
-    free(tmp_cells_soa->speeds6);
-    free(tmp_cells_soa->speeds7);
-    free(tmp_cells_soa->speeds8);
+//
+//    // 释放 tmp_cells_soa 中的每个速度数组
+//    free(tmp_cells_soa->speeds0);
+//    free(tmp_cells_soa->speeds1);
+//    free(tmp_cells_soa->speeds2);
+//    free(tmp_cells_soa->speeds3);
+//    free(tmp_cells_soa->speeds4);
+//    free(tmp_cells_soa->speeds5);
+//    free(tmp_cells_soa->speeds6);
+//    free(tmp_cells_soa->speeds7);
+//    free(tmp_cells_soa->speeds8);
+    _mm_free(tmp_cells_soa->speeds0);
+    _mm_free(tmp_cells_soa->speeds1);
+    _mm_free(tmp_cells_soa->speeds2);
+    _mm_free(tmp_cells_soa->speeds3);
+    _mm_free(tmp_cells_soa->speeds4);
+    _mm_free(tmp_cells_soa->speeds5);
+    _mm_free(tmp_cells_soa->speeds6);
+    _mm_free(tmp_cells_soa->speeds7);
+    _mm_free(tmp_cells_soa->speeds8);
 
     // 释放障碍物数组
-    free(*obstacles_ptr);
+//
+//    // 释放障碍物数组
+//    free(*obstacles_ptr);
+    _mm_free(*obstacles_ptr);
     *obstacles_ptr = NULL;
 
     // 释放平均速度数组
-    free(*av_vels_ptr);
+//    free(*av_vels_ptr);
+    _mm_free(*av_vels_ptr);
     *av_vels_ptr = NULL;
 
     return EXIT_SUCCESS;

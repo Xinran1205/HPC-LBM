@@ -3,10 +3,11 @@
 EXE=d2q9-bgk
 
 CC=icc
+CFLAGS= -std=c99 -Wall -O3 -xHost -ipo -no-prec-div -fp-model fast=2 -mtune=native -qopenmp -qopt-report=5
 #CC=gcc
-#CFLAGS= -std=c99 -Wall -Ofast -mtune=native
-CFLAGS= -std=c99 -Wall -O3 -xHost -ipo -no-prec-div -fp-model fast=2 -mtune=native -qopt-report=5
+#CFLAGS= -std=c99 -Wall -Ofast -mtune=native -fopenmp-simd
 LIBS = -lm
+
 
 FINAL_STATE_FILE=./final_state.dat
 AV_VELS_FILE=./av_vels.dat
