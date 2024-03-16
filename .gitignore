@@ -1,17 +1,22 @@
-**/.idea/
-**/out/
-**/.vscode/
-**/cmake-build-debug/
-*.dat
+*.o
+
+d2q9-bgk
+d2q9-bgk.out
+final_state.dat
+av_vels.dat
+final_state.png
 
 # Prerequisites
 *.d
+**/cmake-build-debug/
+**/.idea/
+**/out/
+**/.vscode/
 
 # Compiled Object files
 *.slo
 *.lo
 *.o
-*.obj
 
 # Precompiled Headers
 *.gch
