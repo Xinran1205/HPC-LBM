@@ -18,7 +18,9 @@ The culmination of my optimization efforts involved leveraging OpenMP, a paralle
 
 ## Compiling and running
 
-To compile type `make`. Editing the values for `CC` and `CFLAGS` in the Makefile can be used to enable different compiler options or use a different compiler. These can also be passed on the command line:
+### Compiling and running the vectorized or OpenMP version of the code
+
+Type `make`. Editing the values for `CC` and `CFLAGS` in the Makefile can be used to enable different compiler options or use a different compiler. These can also be passed on the command line:
 
     $ make CFLAGS="-O3 -fopenmp -DDEBUG"
 
@@ -30,6 +32,18 @@ Usage:
 eg:
 
     $ ./d2q9-bgk input_256x256.params obstacles_256x256.dat
+
+### Compiling and running MPI code locally
+
+To compile the MPI program, use the following command:
+
+    $ mpicc -o result d2q9-bgk.c -lm
+
+To run the MPI program with 4 processes, use this command:
+
+    $ mpirun -np 4 ./result input_128x128.params obstacles_128x128.dat
+
+In this example, `4` represents the number of processes to be used.
 
 ## Checking results
 
@@ -80,9 +94,3 @@ When finished, the output from your job will be in a file called
 If you wish to run a different set of input parameters, you should
 modify `job_submit_d2q9-bgk` to update the value assigned to `options`.
 
-
-# Visualisation
-
-You can view the final state of the simulation by creating a .png image file using a provided Gnuplot script:
-
-    $ gnuplot final_state.plt
