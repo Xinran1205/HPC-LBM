@@ -15,6 +15,9 @@ Recognizing the importance of memory access patterns for performance, I revised 
 
 The culmination of my optimization efforts involved leveraging OpenMP, a parallel programming model, to accelerate computation. By scaling the code from a single core to utilizing 28 cores, I achieved significant gains in performance and efficiency, making my LBM simulations more practical for complex scenarios.
 
+### Distributed memory parallelism with MPI
+
+This part extends the optimization of the LBM code by employing the Message Passing Interface (MPI). Running on the BlueCrystal supercomputer, the optimized code utilizes four nodes, each equipped with 28 cores. This segment builds upon the previously optimized serial code. In contrast to the shared memory model used in OpenMP, MPI employs a distributed memory model suitable for multi-node computing environments. Each node has its own independent physical memory, and data exchange is explicitly conducted through network or other communication methods. In this project phase, MPI alone was utilized to manage inter-node communications, achieving performance levels that significantly enhance the practicality of LBM simulations for even more complex scenarios.
 
 ## Compiling and running
 
