@@ -20,7 +20,7 @@ This part of the project extended the optimization of LBM code using the Message
 
 ## Results
 <img src="/pic/1.png" alt="scalability" width="450" height="350">
-<img src="/pic/1.png" alt="speedup" width="500" height="350">
+<img src="/pic/2.png" alt="speedup" width="500" height="350">
 ## Compiling and running
 
 ### Compiling and running the vectorized or OpenMP version of the code

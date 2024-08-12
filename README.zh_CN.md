@@ -19,4 +19,4 @@
 
 ## Results
 <img src="/pic/1.png" alt="scalability" width="450" height="350">
-<img src="/pic/1.png" alt="speedup" width="500" height="350">
+<img src="/pic/2.png" alt="speedup" width="500" height="350">
