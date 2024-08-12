@@ -18,6 +18,9 @@ My optimization efforts ultimately utilized OpenMP, a parallel programming model
 ### Distributed Memory Parallelization Using MPI
 This part of the project extended the optimization of LBM code using the Message Passing Interface (MPI). The optimized code runs on the BlueCrystal supercomputer, utilizing 4 nodes, each equipped with 28 cores. Unlike the shared memory model used in OpenMP, MPI adopts a distributed memory model suitable for multi-node computing environments. Each node has its own independent physical memory, and data exchanges are explicitly conducted through networks or other communication methods. I implemented data allocation and initialization for each process and adopted load balancing strategies. Additionally, through the Halo Exchange strategy, I optimized inter-node data communication, optimizing memory storage while ensuring data accuracy.
 
+## Results
+<img src="/pic/1.png" alt="scalability" width="450" height="350">
+<img src="/pic/1.png" alt="speedup" width="500" height="350">
 ## Compiling and running
 
 ### Compiling and running the vectorized or OpenMP version of the code
