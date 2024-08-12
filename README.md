@@ -1,23 +1,22 @@
 
-# Introduction
+# Lattice Boltzmann Method (LBM) Optimization Project
+- zh_CN [简体中文](/README.zh_CN.md)
+## Introduction
+The Lattice Boltzmann Method (LBM) is a powerful and flexible method for simulating complex fluid flows. However, to fully utilize its capabilities, optimizing the underlying code to enhance performance is crucial. This project details my comprehensive optimization process, which covers several stages:
 
-The Lattice Boltzmann Method (LBM) is a powerful and flexible approach to simulate complex fluid flows. However, to fully exploit its capabilities, optimizing the underlying code for performance is essential. This project details my comprehensive optimization process, which spans several stages:
+## Optimization Stages
 
 ### Serial Optimization
+I began with serial optimization techniques to lay a solid foundation for performance improvement. I implemented loop fusion and pointer swapping techniques to streamline the execution process and reduce overhead.
 
-I began with serial optimization techniques to lay a solid foundation for performance improvements. Techniques such as loop fusion and pointer swapping were implemented to streamline the execution flow and reduce overhead.
+### Vectorization Optimization
+During the optimization process, I analyzed the impact of memory access patterns on overall performance. To enhance data access speed and facilitate effective compiler vectorization, I first adjusted the data structures used in the code to better suit vector operations. I then applied memory alignment techniques, which not only optimized the data loading process but also enhanced processing speed. To further improve vectorization efficiency, I experimented with various compilers and their different versions, applying specific compiler flags. By analyzing the optimization reports provided by each compiler, I was able to select the most suitable compilation strategy for our project, thereby maximizing the execution efficiency and parallel processing capability of the code.
 
-### Vectorization
+### Parallel Acceleration Using OpenMP
+My optimization efforts ultimately utilized OpenMP, a parallel programming model, to accelerate computation. By expanding the code from a single core to 28 cores, I achieved significant improvements in performance and efficiency, making my LBM simulations more suitable for complex scenarios.
 
-Recognizing the importance of memory access patterns for performance, I revised the data structures used within the code. Additionally, memory alignment techniques were applied to enhance data access speed and facilitate vectorization by the compiler.
-
-### Parallel Acceleration with OpenMP
-
-The culmination of my optimization efforts involved leveraging OpenMP, a parallel programming model, to accelerate computation. By scaling the code from a single core to utilizing 28 cores, I achieved significant gains in performance and efficiency, making my LBM simulations more practical for complex scenarios.
-
-### Distributed memory parallelism with MPI
-
-This part extends the optimization of the LBM code by employing the Message Passing Interface (MPI). Running on the BlueCrystal supercomputer, the optimized code utilizes four nodes, each equipped with 28 cores. This segment builds upon the previously optimized serial code. In contrast to the shared memory model used in OpenMP, MPI employs a distributed memory model suitable for multi-node computing environments. Each node has its own independent physical memory, and data exchange is explicitly conducted through network or other communication methods. In this project phase, MPI alone was utilized to manage inter-node communications, achieving performance levels that significantly enhance the practicality of LBM simulations for even more complex scenarios.
+### Distributed Memory Parallelization Using MPI
+This part of the project extended the optimization of LBM code using the Message Passing Interface (MPI). The optimized code runs on the BlueCrystal supercomputer, utilizing 4 nodes, each equipped with 28 cores. Unlike the shared memory model used in OpenMP, MPI adopts a distributed memory model suitable for multi-node computing environments. Each node has its own independent physical memory, and data exchanges are explicitly conducted through networks or other communication methods. I implemented data allocation and initialization for each process and adopted load balancing strategies. Additionally, through the Halo Exchange strategy, I optimized inter-node data communication, optimizing memory storage while ensuring data accuracy.
 
 ## Compiling and running
 
